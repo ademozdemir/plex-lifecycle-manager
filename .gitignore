@@ -1,0 +1,68 @@
+# Plex Lifecycle Manager - Git Ignore
+
+# User configuration
+config/config.yaml
+config/*.yaml
+config/*.yml
+
+# Reports and backups
+reports/*.json
+reports/*.html
+reports/*.csv
+reports/backup_*.json
+
+# Logs
+logs/*.log
+logs/*.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Docker
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Keep directory structure but ignore contents
+config/*
+!config/.gitkeep
+reports/*
+!reports/.gitkeep
+logs/*
+!logs/.gitkeep
+
+# Exception: Keep example config
+!config/config.example.yaml

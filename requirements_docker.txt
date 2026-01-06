@@ -1,0 +1,16 @@
+# Core dependencies
+plexapi==4.15.16
+pyyaml==6.0.1
+pyarr==5.2.0
+requests==2.31.0
+
+# Web UI
+flask==3.0.0
+flask-cors==4.0.0
+werkzeug==3.0.1
+
+# Scheduler (optional module)
+APScheduler==3.10.4
+
+# Additional utilities
+python-dateutil==2.8.2

@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  plex-lifecycle:
+    container_name: plex-lifecycle
+    image: plex-lifecycle:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    ports:
+      - "8765:8765"
+    
+    volumes:
+      # Config directory (persistent)
+      - ./config:/config
+      
+      # Reports directory (persistent)
+      - ./reports:/reports
+      
+      # Logs directory (persistent)
+      - ./logs:/logs
+      
+      # Media directories (READ-ONLY for safety!)
+      # ADJUST THESE TO YOUR SYNOLOGY PATHS:
+      - /volume1/media/movies:/media/movies:ro
+      - /volume1/media/tv:/media/tv:ro
+      - /volume1/media/kids_movies:/media/kids_movies:ro
+      - /volume1/media/kids_series:/media/kids_series:ro
+      - /volume1/media/anime:/media/anime:ro
+      
+      # Optional: Trash folder for move instead of delete
+      # - /volume1/trash:/trash
+    
+    environment:
+      # Timezone
+      - TZ=Europe/Amsterdam
+      
+      # Optional: Pre-configure via environment variables
+      # (Can also be set via Web UI)
+      # - PLEX_URL=http://192.168.1.100:32400
+      # - PLEX_TOKEN=your-token-here
+      # - SONARR_URL=http://192.168.1.100:8989
+      # - SONARR_API_KEY=your-api-key
+      # - RADARR_URL=http://192.168.1.100:7878
+      # - RADARR_API_KEY=your-api-key
+    
+    restart: unless-stopped
+    
+    # Network mode (optional - use if Plex is on host network)
+    # network_mode: host
+    
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8765/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# Optional: Create named volumes for persistence
+volumes:
+  config:
+  reports:
+  logs:

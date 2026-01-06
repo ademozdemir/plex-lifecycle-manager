@@ -1,0 +1,127 @@
+# Plex Lifecycle Manager - Example Configuration
+# Copy this file to config.yaml and fill in your details
+
+plex:
+  url: "http://192.168.1.100:32400"  # Your Plex server URL
+  token: "YOUR_PLEX_TOKEN_HERE"       # Get from Plex Web App (see README)
+
+sonarr:
+  enabled: true                        # Enable Sonarr integration
+  url: "http://192.168.1.100:8989"    # Your Sonarr URL
+  api_key: "YOUR_SONARR_API_KEY"      # Get from Sonarr Settings → General → Security
+
+radarr:
+  enabled: true                        # Enable Radarr integration
+  url: "http://192.168.1.100:7878"    # Your Radarr URL
+  api_key: "YOUR_RADARR_API_KEY"      # Get from Radarr Settings → General → Security
+
+# Auto-detected libraries (don't edit unless you know what you're doing)
+libraries:
+  - id: 1
+    name: "Movies"
+    type: "movie"
+    rules: "movies"
+  - id: 2
+    name: "KidsMovies"
+    type: "movie"
+    rules: "kids_movies"
+  - id: 3
+    name: "TV Shows"
+    type: "show"
+    rules: "tv_shows"
+  - id: 4
+    name: "KidsSeries"
+    type: "show"
+    rules: "kids_series"
+  - id: 5
+    name: "Anime"
+    type: "show"
+    rules: "anime"
+
+# Cleanup rules (customize to your preferences)
+rules:
+  # Movie rules
+  movies:
+    unwatched_age_years: 5.0           # Delete if unwatched for 5 years
+    watched_age_years: 2.0             # Delete if last viewed 2 years ago
+    low_rating_threshold: 3.0          # Consider low-rated if < 3 stars
+    low_rating_age_years: 1.0          # Delete low-rated after 1 year
+    large_file_gb: 50                  # Consider large if > 50 GB
+    large_file_unwatched_years: 3.0    # Delete large unwatched after 3 years
+  
+  kids_movies:
+    unwatched_age_years: 3.0           # Kids movies: shorter retention
+    watched_age_years: 1.0
+    low_rating_threshold: 3.0
+    low_rating_age_years: 1.0
+    large_file_gb: 30
+    large_file_unwatched_years: 2.0
+  
+  # TV show rules
+  tv_shows:
+    unwatched_age_years: 5.0           # Delete if never watched for 5 years
+    fully_watched_age_years: 0.5       # Delete if fully watched 6 months ago
+    partially_watched_age_years: 2.0   # Delete if abandoned for 2 years
+  
+  kids_series:
+    unwatched_age_years: 3.0
+    fully_watched_age_years: 0.3       # 4 months
+    partially_watched_age_years: 1.0
+  
+  anime:
+    unwatched_age_years: 5.0
+    fully_watched_age_years: 1.0
+    partially_watched_age_years: 3.0
+
+# Duplicate detection
+duplicates:
+  enabled: true                        # Enable duplicate detection
+  nl_audio_priority: false             # ⚠️ Set to true ONLY if you use Dutch audio!
+  quality_preference:                  # Prefer higher quality (if nl_audio_priority is false)
+    - "2160p"
+    - "1080p"
+    - "720p"
+    - "480p"
+  codec_preference:                    # Prefer better codecs
+    - "HEVC"
+    - "H265"
+    - "H264"
+    - "x264"
+
+# Execution settings
+execution:
+  dry_run: true                        # Safety: analysis only, no deletion
+  create_backup_list: true             # Create backup before deletion
+  move_to_trash: false                 # Delete permanently (no trash)
+  trash_folder: "/trash"               # Trash location (if enabled)
+  unmonitor_in_sonarr: true            # Unmonitor before deletion
+  unmonitor_in_radarr: true            # Unmonitor before deletion
+  delete_from_sonarr: false            # Don't remove from Sonarr
+  delete_from_radarr: false            # Don't remove from Radarr
+
+# Reporting
+reporting:
+  output_dir: "/reports"               # Report output directory
+  generate_html: true                  # Generate HTML reports
+  generate_json: true                  # Generate JSON reports
+  generate_csv: true                   # Generate CSV reports
+
+# Logging
+logging:
+  level: "INFO"                        # Log level: DEBUG, INFO, WARNING, ERROR
+  console: true                        # Log to console
+  file: "/logs/cleanup.log"            # Log file path
+
+# Safety limits
+safety:
+  max_delete_percentage: 50            # Max % of library to delete in one run
+  min_free_space_gb: 100               # Minimum free space to maintain
+  require_confirmation: true           # Require manual confirmation
+
+# Scheduled analysis (Optional)
+schedule:
+  enabled: false                       # Enable scheduled analysis
+  time: "03:00"                        # Time to run (HH:MM format, 24-hour)
+  days: "weekly"                       # Frequency: daily, weekly, monthly
+  day_of_week: "mon"                   # Day for weekly (mon, tue, wed, thu, fri, sat, sun)
+  day_of_month: 1                      # Day for monthly (1-31)
