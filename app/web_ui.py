@@ -115,7 +115,7 @@ def scheduled_analysis_job():
 
 def init_scheduler():
     """
-    Initialize scheduler with config from YAML
+    Initialize scheduler with config from schedule.yaml (SEPARATE file!)
     Safe - errors don't crash the application
     """
     global scheduler, scheduler_enabled
@@ -125,16 +125,8 @@ def init_scheduler():
         return False
     
     try:
-        # Load config
-        config_path = CONFIG_DIR / 'config.yaml'
-        if not config_path.exists():
-            logger.info("No config found - scheduler will be configured later")
-            return False
-        
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-        
-        schedule_config = config.get('schedule', {})
+        # Load schedule config from SEPARATE file
+        schedule_config = load_schedule_config()
         
         if not schedule_config.get('enabled', False):
             logger.info("Scheduled analysis is disabled in configuration")
@@ -199,34 +191,141 @@ def init_scheduler():
 
 
 def get_config_path():
-    """Get config file path"""
+    """Get main config file path"""
     return CONFIG_DIR / 'config.yaml'
 
 
+def get_schedule_config_path():
+    """Get schedule config file path - SEPARATE from main config!"""
+    return CONFIG_DIR / 'schedule.yaml'
+
+
 def load_config():
-    """Load configuration"""
+    """Load main configuration (WITHOUT schedule)"""
     config_path = get_config_path()
     
     if not config_path.exists():
-        # Return default config
-        return get_default_config()
+        # Return default config WITHOUT schedule
+        default = get_default_config()
+        default.pop('schedule', None)  # Remove schedule from default
+        return default
     
     try:
         with open(config_path, 'r') as f:
-            return yaml.safe_load(f)
+            config = yaml.safe_load(f) or {}
+            # Remove schedule if present (legacy)
+            config.pop('schedule', None)
+            return config
     except Exception as e:
         logger.error(f"Failed to load config: {e}")
-        return get_default_config()
+        default = get_default_config()
+        default.pop('schedule', None)
+        return default
+
+
+def load_schedule_config():
+    """Load schedule configuration from SEPARATE file"""
+    schedule_path = get_schedule_config_path()
+    
+    if not schedule_path.exists():
+        # Return default schedule
+        return {
+            'enabled': False,
+            'time': '03:00',
+            'days': 'weekly',
+            'day_of_week': 'mon',
+            'day_of_month': 1
+        }
+    
+    try:
+        with open(schedule_path, 'r') as f:
+            return yaml.safe_load(f) or {}
+    except Exception as e:
+        logger.error(f"Failed to load schedule config: {e}")
+        return {
+            'enabled': False,
+            'time': '03:00',
+            'days': 'weekly',
+            'day_of_week': 'mon',
+            'day_of_month': 1
+        }
+
+
+def save_schedule_config(schedule_data):
+    """Save schedule configuration to SEPARATE file - NEVER touches main config!"""
+    schedule_path = get_schedule_config_path()
+    
+    try:
+        CONFIG_DIR.mkdir(exist_ok=True)
+        with open(schedule_path, 'w') as f:
+            yaml.dump(schedule_data, f, default_flow_style=False, sort_keys=False)
+        logger.info("Schedule configuration saved to separate file")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to save schedule config: {e}")
+        return False
 
 
 def save_config(config):
-    """Save configuration"""
+    """Save main configuration - NEVER touches schedule (separate file!)"""
     config_path = get_config_path()
     
     try:
         CONFIG_DIR.mkdir(exist_ok=True)
+        
+        # Remove schedule from config if present (goes in separate file)
+        config.pop('schedule', None)
+        
+        # Load existing config if it exists
+        existing_config = {}
+        if config_path.exists():
+            try:
+                with open(config_path, 'r') as f:
+                    existing_config = yaml.safe_load(f) or {}
+                    existing_config.pop('schedule', None)  # Remove legacy schedule
+            except Exception as e:
+                logger.warning(f"Could not load existing config: {e}")
+        
+        # Handle "cleanup" -> "rules" mapping (Web UI uses "cleanup", config uses "rules")
+        if 'cleanup' in config:
+            cleanup_data = config.pop('cleanup')
+            # Start with existing rules
+            if 'rules' in existing_config:
+                config['rules'] = existing_config['rules'].copy()
+            else:
+                config['rules'] = {}
+            # Update only the rules sent from frontend
+            for rule_key, rule_value in cleanup_data.items():
+                config['rules'][rule_key] = rule_value
+        
+        # Deep merge function
+        def deep_merge(base, update):
+            """Recursively merge update into base, preserving keys not in update"""
+            result = base.copy()
+            for key, value in update.items():
+                if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                    result[key] = deep_merge(result[key], value)
+                else:
+                    result[key] = value
+            return result
+        
+        # Start with existing config and deep merge new config
+        merged_config = deep_merge(existing_config, config)
+        
+        # Ensure critical sections exist
+        if 'libraries' not in merged_config:
+            merged_config['libraries'] = []
+            logger.warning("No libraries in config - will need to be configured")
+        
+        if 'rules' not in merged_config:
+            merged_config['rules'] = get_default_config()['rules']
+            logger.info("Added default rules to config")
+        
+        # Save merged config (WITHOUT schedule!)
         with open(config_path, 'w') as f:
-            yaml.dump(config, f, default_flow_style=False)
+            yaml.dump(merged_config, f, default_flow_style=False, sort_keys=False)
+        
+        logger.info("Main configuration saved (schedule is in separate file)")
         return True
     except Exception as e:
         logger.error(f"Failed to save config: {e}")
@@ -375,23 +474,104 @@ def health():
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
-    """Get current configuration"""
+    """Get current configuration (combines main config + schedule from separate files)"""
+    # Load main config
     config = load_config()
+    
+    # Load schedule from separate file
+    schedule = load_schedule_config()
+    
+    # Combine for frontend (but they're saved separately!)
+    config['schedule'] = schedule
+    
     return jsonify(config)
 
 
 @app.route('/api/config', methods=['POST'])
 def update_config():
-    """Update configuration"""
+    """Update configuration (saves main config and schedule separately)"""
     try:
         config = request.json
-        if save_config(config):
-            return jsonify({'success': True, 'message': 'Configuration saved'})
-        else:
+        
+        # Extract schedule data if present (goes to separate file!)
+        schedule_data = config.pop('schedule', None)
+        
+        # Save main config (WITHOUT schedule)
+        if not save_config(config):
             return jsonify({'success': False, 'message': 'Failed to save configuration'}), 500
+        
+        # Save schedule separately if provided
+        if schedule_data is not None:
+            if not save_schedule_config(schedule_data):
+                logger.warning("Failed to save schedule config, but main config was saved")
+            else:
+                # Re-initialize scheduler with new config
+                try:
+                    if scheduler_enabled:
+                        init_scheduler()
+                except Exception as e:
+                    logger.warning(f"Failed to re-initialize scheduler: {e}")
+        
+        # Try to auto-detect libraries if Plex credentials provided
+        try:
+            if config.get('plex', {}).get('url') and config.get('plex', {}).get('token'):
+                auto_detect_libraries()
+        except Exception as e:
+            logger.warning(f"Library auto-detection failed: {e}")
+            # Don't fail the whole save if auto-detection fails
+        
+        return jsonify({'success': True, 'message': 'Configuration saved'})
     except Exception as e:
         logger.error(f"Failed to update config: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+def auto_detect_libraries():
+    """Auto-detect Plex libraries and add to config"""
+    try:
+        config_path = get_config_path()
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        plex_url = config.get('plex', {}).get('url')
+        plex_token = config.get('plex', {}).get('token')
+        
+        if not plex_url or not plex_token:
+            return
+        
+        from plexapi.server import PlexServer
+        plex = PlexServer(plex_url, plex_token)
+        
+        libraries = []
+        for section in plex.library.sections():
+            lib_type = 'movie' if section.type == 'movie' else 'show' if section.type == 'show' else None
+            if lib_type:
+                # Determine rule set based on library name
+                lib_name_lower = section.title.lower()
+                if 'kid' in lib_name_lower or 'child' in lib_name_lower:
+                    rules = 'kids_movies' if lib_type == 'movie' else 'kids_series'
+                elif 'anime' in lib_name_lower:
+                    rules = 'anime'
+                else:
+                    rules = 'movies' if lib_type == 'movie' else 'tv_shows'
+                
+                libraries.append({
+                    'id': int(section.key),
+                    'name': section.title,
+                    'type': lib_type,
+                    'rules': rules
+                })
+        
+        if libraries:
+            # Use save_config to properly merge and preserve all sections
+            library_update = {'libraries': libraries}
+            if not save_config(library_update):
+                logger.error("Failed to save auto-detected libraries")
+            else:
+                logger.info(f"Auto-detected {len(libraries)} libraries")
+    except Exception as e:
+        logger.error(f"Library auto-detection failed: {e}")
+        raise
 
 
 @app.route('/api/analysis/start', methods=['POST'])
@@ -795,7 +975,7 @@ def cleanup_old_reports():
 
 @app.route('/api/schedule/status', methods=['GET'])
 def get_schedule_status():
-    """Get scheduler status and configuration"""
+    """Get scheduler status and configuration - reads from separate schedule.yaml"""
     try:
         if not scheduler_enabled:
             return jsonify({
@@ -804,19 +984,8 @@ def get_schedule_status():
                 'message': 'Scheduler module not available'
             })
         
-        # Load config
-        config_path = CONFIG_DIR / 'config.yaml'
-        if not config_path.exists():
-            return jsonify({
-                'enabled': False,
-                'available': True,
-                'message': 'Configuration not found'
-            })
-        
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-        
-        schedule_config = config.get('schedule', {})
+        # Load schedule config from SEPARATE file
+        schedule_config = load_schedule_config()
         is_enabled = schedule_config.get('enabled', False)
         
         # Get next run time if scheduler is running
@@ -843,7 +1012,7 @@ def get_schedule_status():
 
 @app.route('/api/schedule/update', methods=['POST'])
 def update_schedule():
-    """Update scheduler configuration"""
+    """Update scheduler configuration - ONLY touches schedule.yaml, NEVER main config!"""
     try:
         if not scheduler_enabled:
             return jsonify({
@@ -853,17 +1022,12 @@ def update_schedule():
         
         data = request.json
         
-        # Load current config
-        config_path = CONFIG_DIR / 'config.yaml'
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-        
-        # Update schedule config
-        config['schedule'] = data
-        
-        # Save config
-        with open(config_path, 'w') as f:
-            yaml.safe_dump(config, f, default_flow_style=False)
+        # Save to SEPARATE schedule.yaml file - main config is NEVER touched!
+        if not save_schedule_config(data):
+            return jsonify({
+                'success': False,
+                'message': 'Failed to save schedule configuration'
+            }), 500
         
         # Re-initialize scheduler
         success = init_scheduler()
@@ -871,7 +1035,7 @@ def update_schedule():
         if success:
             return jsonify({
                 'success': True,
-                'message': 'Schedule updated successfully'
+                'message': 'Schedule updated successfully (separate file)'
             })
         else:
             return jsonify({
