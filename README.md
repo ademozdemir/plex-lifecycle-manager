@@ -62,9 +62,9 @@ mkdir -p app/templates config reports logs
 │   ├── web_ui.py
 │   └── templates/
 │       └── index.html
-├── config/           # Created automatically
+├── config/           # Created automatically --> better to create all folders before the install
 ├── reports/          # Created automatically
-└── logs/            # Created automatically
+└── logs/            # Created automatically 
 ```
 
 4. **Build and start the container**
