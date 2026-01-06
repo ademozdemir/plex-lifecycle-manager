@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plex Lifecycle Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            background: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .tab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            min-height: 500px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Dashboard */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .stat-card h3 {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group input[type="url"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Buttons */
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        .btn-danger {
+            background: #e53e3e;
+        }
+
+        .btn-danger:hover {
+            background: #c53030;
+        }
+
+        .btn-danger:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn.active {
+            background: #764ba2;
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-info {
+            background: #bee3f8;
+            color: #2c5282;
+            border-left: 4px solid #3182ce;
+        }
+
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border-left: 4px solid #38a169;
+        }
+
+        .alert-warning {
+            background: #feebc8;
+            color: #744210;
+            border-left: 4px solid #ed8936;
+        }
+
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border-left: 4px solid #e53e3e;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transition: width 0.3s;
+        }
+
+        .progress-status {
+            color: #666;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        /* Reports */
+        .report-list {
+            list-style: none;
+        }
+
+        .report-item {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .report-item:hover {
+            background: #edf2f7;
+        }
+
+        .report-info {
+            flex: 1;
+        }
+
+        .report-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .report-meta {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .report-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Table */
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .report-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 500;
+        }
+
+        .report-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .report-table tr:hover {
+            background: #f7fafc;
+        }
+
+        .item-row-tv {
+            background: #fffbeb !important;
+        }
+
+        .item-row-continuing {
+            background: #f0fdf4 !important;
+            opacity: 0.7;
+        }
+
+        .checkbox-cell {
+            text-align: center;
+        }
+
+        .checkbox-cell input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        .checkbox-cell input[type="checkbox"]:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-nl {
+            background: #48bb78;
+            color: white;
+        }
+
+        .badge-priority-high {
+            background: #e53e3e;
+            color: white;
+        }
+
+        .badge-priority-medium {
+            background: #ed8936;
+            color: white;
+        }
+
+        .badge-priority-low {
+            background: #3182ce;
+            color: white;
+        }
+
+        .badge-manual-review {
+            background: #ed8936;
+            color: white;
+        }
+
+        .badge-continuing {
+            background: #48bb78;
+            color: white;
+        }
+
+        /* Utility */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-20 {
+            margin-top: 20px;
+        }
+
+        .mb-20 {
+            margin-bottom: 20px;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .tabs {
+                flex-direction: column;
+            }
+
+            .stat-card {
+                min-width: 100%;
+            }
+
+            .report-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .report-actions {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Plex Lifecycle Manager</h1>
+            <p>Smart media cleanup with NL audio priority and intelligent rules</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</div>
+            <div class="tab" onclick="switchTab('config')">⚙️ Configuration</div>
+            <div class="tab" onclick="switchTab('analysis')">🔍 Analysis</div>
+            <div class="tab" onclick="switchTab('reports')">📄 Reports</div>
+        </div>
+
+        <div class="content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <h2 style="margin-bottom: 20px;">Dashboard</h2>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Reports</h3>
+                        <div class="value" id="stat-reports">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Items Flagged</h3>
+                        <div class="value" id="stat-items">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Space to Free</h3>
+                        <div class="value" id="stat-space">0 GB</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Last Run</h3>
+                        <div class="value" id="stat-last-run" style="font-size: 16px;">Never</div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <strong>Welcome!</strong><br>
+                    Configure your Plex settings, then run an analysis to identify media for cleanup.
+                </div>
+
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn" onclick="switchTab('config')">⚙️ Configure Settings</button>
+                    <button class="btn" onclick="switchTab('analysis')">🔍 Run Analysis</button>
+                    <button class="btn" onclick="switchTab('reports')">📄 View Reports</button>
+                </div>
+            </div>
+
+            <!-- Configuration Tab -->
+            <div id="config" class="tab-content">
+                <h2 style="margin-bottom: 20px;">Configuration</h2>
+
+                <form id="config-form">
+                    <h3 style="margin-bottom: 15px;">Plex Server</h3>
+
+                    <div class="form-group">
+                        <label>Plex URL *</label>
+                        <input type="url" id="plex-url" placeholder="http://192.168.1.100:32400" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Plex Token *</label>
+                        <input type="text" id="plex-token" placeholder="Your Plex authentication token" required>
+                    </div>
+
+                    <hr style="margin: 30px 0; border: none; border-top: 2px solid #e0e0e0;">
+
+                    <h3 style="margin-bottom: 15px;">Sonarr Integration (Optional)</h3>
+
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="sonarr-enabled">
+                        <label for="sonarr-enabled">Enable Sonarr Integration</label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sonarr URL</label>
+                        <input type="url" id="sonarr-url" placeholder="http://192.168.1.100:8989">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sonarr API Key</label>
+                        <input type="text" id="sonarr-api-key" placeholder="Your Sonarr API key">
+                    </div>
+
+                    <hr style="margin: 30px 0; border: none; border-top: 2px solid #e0e0e0;">
+
+                    <h3 style="margin-bottom: 15px;">Radarr Integration (Optional)</h3>
+
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="radarr-enabled">
+                        <label for="radarr-enabled">Enable Radarr Integration</label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Radarr URL</label>
+                        <input type="url" id="radarr-url" placeholder="http://192.168.1.100:7878">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Radarr API Key</label>
+                        <input type="text" id="radarr-api-key" placeholder="Your Radarr API key">
+                    </div>
+
+                    <hr style="margin: 30px 0; border: none; border-top: 2px solid #e0e0e0;">
+
+                    <h3 style="margin-bottom: 15px;">Cleanup Rules</h3>
+
+                    <div class="form-group">
+                        <label>Unwatched Age Threshold (years)</label>
+                        <input type="number" id="unwatched-age" value="5" min="0.5" max="10" step="0.5">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Watched Age Threshold (years)</label>
+                        <input type="number" id="watched-age" value="2" min="0.5" max="10" step="0.5">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Low Rating Threshold (stars)</label>
+                        <input type="number" id="rating-threshold" value="3" min="1" max="5" step="0.5">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Large File Threshold (GB)</label>
+                        <input type="number" id="file-size-threshold" value="50" min="10" max="200" step="10">
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="nl-audio-priority" checked>
+                        <label for="nl-audio-priority">NL Audio Priority (keep Dutch audio over higher quality)</label>
+                    </div>
+
+                    <hr style="margin: 30px 0; border: none; border-top: 2px solid #e0e0e0;">
+
+                    <h3 style="margin-bottom: 15px;">Duplicate Detection</h3>
+
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="duplicates-enabled" checked>
+                        <label for="duplicates-enabled">Enable Duplicate Detection</label>
+                    </div>
+
+                    <button type="submit" class="btn">💾 Save Configuration</button>
+                </form>
+            </div>
+
+            <!-- Analysis Tab -->
+            <div id="analysis" class="tab-content">
+                <h2 style="margin-bottom: 20px;">Run Analysis</h2>
+
+                <div class="alert alert-warning">
+                    <strong>⚠️ Dry Run Mode</strong><br>
+                    Analysis will scan your Plex libraries and identify media for cleanup based on your rules.
+                    No files will be deleted during analysis - this is a read-only operation.
+                </div>
+
+                <button class="btn" onclick="startAnalysis()" id="start-analysis-btn">▶️ Start Analysis</button>
+
+                <div id="analysis-progress" class="progress-container hidden">
+                    <h3 style="margin-bottom: 10px;">Analysis in Progress</h3>
+                    <div class="progress-bar">
+                        <div id="analysis-progress-fill" class="progress-fill" style="width: 0%;">0%</div>
+                    </div>
+                    <div id="analysis-status" class="progress-status">Preparing...</div>
+                </div>
+
+                <div id="analysis-result" class="hidden mt-20">
+                    <div class="alert alert-success">
+                        <strong>✅ Analysis Complete!</strong><br>
+                        Check the Reports tab to view results.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Tab with Execute Mode -->
+            <div id="reports" class="tab-content">
+                <h2 style="margin-bottom: 20px;">Analysis Reports</h2>
+
+                <button class="btn" onclick="loadReports()">🔄 Refresh Reports</button>
+                <button class="btn btn-small" onclick="cleanupOldReports()">🗑️ Cleanup Old Reports</button>
+
+                <ul id="reports-list" class="report-list" style="margin-top: 20px;">
+                    <li class="report-item">
+                        <div class="report-info">
+                            <div class="report-name">No reports yet</div>
+                            <div class="report-meta">Run an analysis to generate reports</div>
+                        </div>
+                    </li>
+                </ul>
+
+                <div id="report-detail" class="hidden" style="margin-top: 30px;">
+                    <h3>Report Details</h3>
+                    
+                    <!-- Summary -->
+                    <div id="report-summary" class="alert alert-info"></div>
+                    
+                    <!-- Filters -->
+                    <div style="margin: 20px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <label><strong>Filter:</strong></label>
+                        <button class="btn btn-small active" onclick="filterItems('all')" id="filter-all">All</button>
+                        <button class="btn btn-small" onclick="filterItems('movies')" id="filter-movies">Movies Only</button>
+                        <button class="btn btn-small" onclick="filterItems('tv')" id="filter-tv">TV Shows Only</button>
+                        
+                        <span style="margin-left: auto;">
+                            <strong>Selected:</strong> <span id="selection-count">0</span> items 
+                            (<span id="selection-size">0</span> GB)
+                        </span>
+                    </div>
+                    
+                    <!-- Selection Controls -->
+                    <div style="margin: 10px 0; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-small" onclick="selectAllMovies()">✓ Select All Movies</button>
+                        <button class="btn btn-small" onclick="selectAllVisible()">✓✓ Select All Visible</button>
+                        <button class="btn btn-small" onclick="deselectAll()">✗ Deselect All</button>
+                        <button class="btn btn-danger" onclick="confirmDelete()" id="delete-btn" disabled>
+                            🗑️ Delete Selected
+                        </button>
+                    </div>
+                    
+                    <!-- Pagination Controls -->
+                    <div style="margin: 20px 0; display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                        <button class="btn btn-small" onclick="previousPage()" id="prev-btn">« Previous</button>
+                        <span>Page <strong id="current-page">1</strong> of <strong id="total-pages">1</strong></span>
+                        <button class="btn btn-small" onclick="nextPage()" id="next-btn">Next »</button>
+                        
+                        <span style="margin-left: 20px;">
+                            Items per page:
+                            <select id="items-per-page" onchange="changePageSize()" style="padding: 8px; border-radius: 4px; border: 2px solid #e0e0e0;">
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="9999">All</option>
+                            </select>
+                        </span>
+                    </div>
+                    
+                    <!-- Items Table -->
+                    <div style="overflow-x: auto;">
+                        <table class="report-table" id="items-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">Select</th>
+                                    <th>Title</th>
+                                    <th>Library</th>
+                                    <th>Size (GB)</th>
+                                    <th>Audio</th>
+                                    <th>Resolution</th>
+                                    <th>Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody id="items-tbody">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Bottom Pagination -->
+                    <div style="margin: 20px 0; display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                        <button class="btn btn-small" onclick="previousPage()">« Previous</button>
+                        <span>Page <strong id="current-page-bottom">1</strong> of <strong id="total-pages-bottom">1</strong></span>
+                        <button class="btn btn-small" onclick="nextPage()">Next »</button>
+                    </div>
+                </div>
+                
+                <!-- Delete Progress -->
+                <div id="delete-progress" class="progress-container hidden">
+                    <h3>Deletion in Progress</h3>
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Deleting files...</strong><br>
+                        This cannot be undone. Please wait.
+                    </div>
+                    <div class="progress-bar">
+                        <div id="delete-progress-fill" class="progress-fill" style="width: 0%;">0%</div>
+                    </div>
+                    <div id="delete-status" class="progress-status">Preparing...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            // Load data when switching to certain tabs
+            if (tabName === 'dashboard') {
+                loadDashboard();
+            } else if (tabName === 'config') {
+                loadConfig();
+            } else if (tabName === 'reports') {
+                loadReports();
+            }
+        }
+
+        // Dashboard
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+
+                document.getElementById('stat-reports').textContent = stats.total_reports || 0;
+                document.getElementById('stat-items').textContent = stats.total_items || 0;
+                document.getElementById('stat-space').textContent = (stats.total_space_gb || 0).toFixed(2) + ' GB';
+                document.getElementById('stat-last-run').textContent = stats.last_run || 'Never';
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+
+        // Configuration
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+
+                // Plex
+                document.getElementById('plex-url').value = config.plex?.url || '';
+                document.getElementById('plex-token').value = config.plex?.token || '';
+
+                // Sonarr
+                document.getElementById('sonarr-enabled').checked = config.sonarr?.enabled || false;
+                document.getElementById('sonarr-url').value = config.sonarr?.url || '';
+                document.getElementById('sonarr-api-key').value = config.sonarr?.api_key || '';
+
+                // Radarr
+                document.getElementById('radarr-enabled').checked = config.radarr?.enabled || false;
+                document.getElementById('radarr-url').value = config.radarr?.url || '';
+                document.getElementById('radarr-api-key').value = config.radarr?.api_key || '';
+
+                // Rules
+                document.getElementById('unwatched-age').value = config.cleanup?.movies?.unwatched_age_years || 5;
+                document.getElementById('watched-age').value = config.cleanup?.movies?.watched_age_years || 2;
+                document.getElementById('rating-threshold').value = config.cleanup?.movies?.low_rating_threshold || 3;
+                document.getElementById('file-size-threshold').value = config.cleanup?.movies?.large_file_gb || 50;
+                document.getElementById('nl-audio-priority').checked = config.duplicates?.nl_audio_priority !== false;
+                document.getElementById('duplicates-enabled').checked = config.duplicates?.enabled !== false;
+
+            } catch (error) {
+                console.error('Failed to load config:', error);
+            }
+        }
+
+        document.getElementById('config-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const config = {
+                plex: {
+                    url: document.getElementById('plex-url').value,
+                    token: document.getElementById('plex-token').value
+                },
+                sonarr: {
+                    enabled: document.getElementById('sonarr-enabled').checked,
+                    url: document.getElementById('sonarr-url').value,
+                    api_key: document.getElementById('sonarr-api-key').value
+                },
+                radarr: {
+                    enabled: document.getElementById('radarr-enabled').checked,
+                    url: document.getElementById('radarr-url').value,
+                    api_key: document.getElementById('radarr-api-key').value
+                },
+                cleanup: {
+                    movies: {
+                        unwatched_age_years: parseFloat(document.getElementById('unwatched-age').value),
+                        watched_age_years: parseFloat(document.getElementById('watched-age').value),
+                        low_rating_threshold: parseFloat(document.getElementById('rating-threshold').value),
+                        large_file_gb: parseInt(document.getElementById('file-size-threshold').value)
+                    },
+                    tv_shows: {
+                        unwatched_age_years: 5.0,
+                        fully_watched_age_years: 0.5,
+                        partially_watched_age_years: 2.0
+                    }
+                },
+                duplicates: {
+                    enabled: document.getElementById('duplicates-enabled').checked,
+                    nl_audio_priority: document.getElementById('nl-audio-priority').checked
+                }
+            };
+
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(config)
+                });
+
+                if (response.ok) {
+                    alert('✅ Configuration saved successfully!');
+                } else {
+                    alert('❌ Failed to save configuration');
+                }
+            } catch (error) {
+                alert('❌ Error saving configuration: ' + error.message);
+            }
+        });
+
+        // Analysis
+        async function startAnalysis() {
+            const btn = document.getElementById('start-analysis-btn');
+            const progressDiv = document.getElementById('analysis-progress');
+            const resultDiv = document.getElementById('analysis-result');
+            
+            btn.disabled = true;
+            progressDiv.classList.remove('hidden');
+            resultDiv.classList.add('hidden');
+
+            try {
+                // Start analysis
+                const response = await fetch('/api/analysis/start', {method: 'POST'});
+                const result = await response.json();
+
+                if (!result.success) {
+                    alert('Failed to start analysis: ' + result.message);
+                    btn.disabled = false;
+                    progressDiv.classList.add('hidden');
+                    return;
+                }
+
+                // Poll for progress
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const statusResponse = await fetch('/api/analysis/status');
+                        const status = await statusResponse.json();
+
+                        const progress = status.progress || 0;
+                        document.getElementById('analysis-progress-fill').style.width = progress + '%';
+                        document.getElementById('analysis-progress-fill').textContent = progress + '%';
+                        document.getElementById('analysis-status').textContent = status.status || 'Running...';
+
+                        if (status.complete) {
+                            clearInterval(pollInterval);
+                            progressDiv.classList.add('hidden');
+                            resultDiv.classList.remove('hidden');
+                            btn.disabled = false;
+                            loadDashboard();
+                        }
+                    } catch (error) {
+                        console.error('Error polling status:', error);
+                    }
+                }, 2000);
+
+            } catch (error) {
+                alert('Error starting analysis: ' + error.message);
+                btn.disabled = false;
+                progressDiv.classList.add('hidden');
+            }
+        }
+
+        // Reports with Execute Mode
+        let currentReport = null;
+        let allItems = [];
+        let filteredItems = [];
+        let selectedIds = new Set();
+        let currentPage = 1;
+        let itemsPerPage = 20;
+        let currentFilter = 'all';
+
+        async function loadReports() {
+            try {
+                const response = await fetch('/api/reports');
+                const reports = await response.json();
+
+                const listEl = document.getElementById('reports-list');
+                
+                if (reports.length === 0) {
+                    listEl.innerHTML = `
+                        <li class="report-item">
+                            <div class="report-info">
+                                <div class="report-name">No reports yet</div>
+                                <div class="report-meta">Run an analysis to generate reports</div>
+                            </div>
+                        </li>
+                    `;
+                    return;
+                }
+
+                listEl.innerHTML = reports.map(report => `
+                    <li class="report-item">
+                        <div class="report-info">
+                            <div class="report-name">${report.filename}</div>
+                            <div class="report-meta">${new Date(report.timestamp).toLocaleString()} • ${report.size}</div>
+                        </div>
+                        <div class="report-actions">
+                            <button class="btn btn-small" onclick="viewReport('${report.filename}')">👁️ View</button>
+                            <button class="btn btn-small" onclick="downloadReport('${report.filename}')">⬇️ Download</button>
+                        </div>
+                    </li>
+                `).join('');
+
+            } catch (error) {
+                console.error('Failed to load reports:', error);
+            }
+        }
+
+        async function viewReport(filename) {
+            try {
+                const response = await fetch(`/api/reports/${filename}`);
+                const report = await response.json();
+                
+                currentReport = report;
+                allItems = report.items || [];
+                
+                // Apply filter
+                filterItems(currentFilter);
+                
+                // Show detail section
+                document.getElementById('report-detail').classList.remove('hidden');
+                
+                // Update summary
+                const summaryEl = document.getElementById('report-summary');
+                summaryEl.innerHTML = `
+                    <strong>Total Items:</strong> ${report.total_items}<br>
+                    <strong>Total Size:</strong> ${report.total_size_gb.toFixed(2)} GB<br>
+                    <strong>Timestamp:</strong> ${new Date(report.timestamp).toLocaleString()}<br>
+                    <strong>Movies (auto-recommended):</strong> ${allItems.filter(i => i.media_type === 'movie').length}<br>
+                    <strong>TV Shows (manual review):</strong> ${allItems.filter(i => i.media_type === 'show').length}
+                `;
+                
+                // Reset selection
+                selectedIds.clear();
+                
+                // Pre-select all auto-recommended movies - FORCE STRING
+                allItems.forEach(item => {
+                    if (item.auto_recommended && item.media_type === 'movie') {
+                        selectedIds.add(String(item.plex_id));  // FORCE STRING!
+                    }
+                });
+                
+                renderPage();
+                
+            } catch (error) {
+                alert('Failed to load report: ' + error.message);
+            }
+        }
+
+        function downloadReport(filename) {
+            window.location.href = `/api/reports/${filename}/download`;
+        }
+
+        // Filter items
+        function filterItems(filter) {
+            currentFilter = filter;
+            currentPage = 1;
+            
+            // Update button states
+            document.getElementById('filter-all').classList.remove('active');
+            document.getElementById('filter-movies').classList.remove('active');
+            document.getElementById('filter-tv').classList.remove('active');
+            document.getElementById(`filter-${filter}`).classList.add('active');
+            
+            // Apply filter
+            if (filter === 'all') {
+                filteredItems = allItems;
+            } else if (filter === 'movies') {
+                filteredItems = allItems.filter(i => i.media_type === 'movie');
+            } else if (filter === 'tv') {
+                filteredItems = allItems.filter(i => i.media_type === 'show');
+            }
+            
+            renderPage();
+        }
+
+        // Pagination
+        function renderPage() {
+            const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+            const startIdx = (currentPage - 1) * itemsPerPage;
+            const endIdx = Math.min(startIdx + itemsPerPage, filteredItems.length);
+            const pageItems = filteredItems.slice(startIdx, endIdx);
+            
+            // Update pagination display
+            document.getElementById('current-page').textContent = currentPage;
+            document.getElementById('current-page-bottom').textContent = currentPage;
+            document.getElementById('total-pages').textContent = totalPages;
+            document.getElementById('total-pages-bottom').textContent = totalPages;
+            
+            // Enable/disable buttons
+            document.getElementById('prev-btn').disabled = currentPage === 1;
+            document.getElementById('next-btn').disabled = currentPage >= totalPages;
+            
+            // Render items
+            const tbody = document.getElementById('items-tbody');
+            tbody.innerHTML = pageItems.map(item => {
+                const isSelected = selectedIds.has(String(item.plex_id));  // FORCE STRING!
+                const isContinuing = item.is_continuing || false;
+                const isManualReview = item.requires_manual_review || false;
+                const rowClass = isContinuing ? 'item-row-continuing' : (isManualReview ? 'item-row-tv' : '');
+                
+                return `
+                    <tr class="${rowClass}">
+                        <td class="checkbox-cell">
+                            <input type="checkbox" 
+                                   ${isSelected ? 'checked' : ''}
+                                   onchange="toggleSelection('${item.plex_id}')"
+                                   data-plex-id="${item.plex_id}">
+                        </td>
+                        <td><strong>${item.title}</strong> ${item.year ? '(' + item.year + ')' : ''}</td>
+                        <td>${item.library_name}</td>
+                        <td>${item.file_size_gb.toFixed(2)}</td>
+                        <td>${item.has_nl_audio ? '<span class="badge badge-nl">NL</span>' : '-'}</td>
+                        <td>${item.resolution || 'N/A'}</td>
+                        <td>
+                            ${isManualReview ? '<span class="badge badge-manual-review">Manual Review</span><br>' : ''}
+                            ${isContinuing ? '<span class="badge badge-continuing">Continuing Series</span><br>' : ''}
+                            <span class="badge badge-priority-${item.delete_priority >= 5 ? 'high' : item.delete_priority >= 3 ? 'medium' : 'low'}">
+                                ${item.delete_reason}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            updateSelectionDisplay();
+        }
+
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderPage();
+                window.scrollTo(0, 0);
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderPage();
+                window.scrollTo(0, 0);
+            }
+        }
+
+        function changePageSize() {
+            itemsPerPage = parseInt(document.getElementById('items-per-page').value);
+            currentPage = 1;
+            renderPage();
+        }
+
+        // Selection
+        function toggleSelection(plexId) {
+            if (selectedIds.has(plexId)) {
+                selectedIds.delete(plexId);
+            } else {
+                selectedIds.add(plexId);
+            }
+            updateSelectionDisplay();
+        }
+
+        function selectAllMovies() {
+            filteredItems.forEach(item => {
+                if (item.media_type === 'movie') {
+                    selectedIds.add(String(item.plex_id));  // FORCE STRING!
+                }
+            });
+            renderPage();
+        }
+        
+        function selectAllVisible() {
+            // Select ALL visible items (movies AND TV shows)
+            filteredItems.forEach(item => {
+                selectedIds.add(String(item.plex_id));
+            });
+            renderPage();
+        }
+
+        function deselectAll() {
+            selectedIds.clear();
+            renderPage();
+        }
+
+        function updateSelectionDisplay() {
+            const selectedItems = allItems.filter(i => selectedIds.has(String(i.plex_id)));  // FORCE STRING!
+            const totalSize = selectedItems.reduce((sum, item) => sum + item.file_size_gb, 0);
+            
+            document.getElementById('selection-count').textContent = selectedItems.length;
+            document.getElementById('selection-size').textContent = totalSize.toFixed(2);
+            
+            // Enable/disable delete button
+            document.getElementById('delete-btn').disabled = selectedItems.length === 0;
+        }
+
+        // Delete execution
+        async function confirmDelete() {
+            const selectedItems = allItems.filter(i => selectedIds.has(String(i.plex_id)));  // FORCE STRING!
+            const totalSize = selectedItems.reduce((sum, item) => sum + item.file_size_gb, 0);
+            
+            const message = `⚠️ DELETE ${selectedItems.length} ITEMS?\n\n` +
+                            `Total size: ${totalSize.toFixed(2)} GB\n\n` +
+                            `This will:\n` +
+                            `• Delete items from Plex\n` +
+                            `• Delete files from disk\n` +
+                            `• Unmonitor in Sonarr/Radarr\n\n` +
+                            `THIS CANNOT BE UNDONE!\n\n` +
+                            `Type DELETE to confirm:`;
+            
+            const confirmation = prompt(message);
+            
+            if (confirmation === 'DELETE') {
+                await executeDelete();
+            } else {
+                alert('Deletion cancelled');
+            }
+        }
+
+        async function executeDelete() {
+            try {
+                // Show progress
+                document.getElementById('delete-progress').classList.remove('hidden');
+                document.getElementById('delete-btn').disabled = true;
+                
+                const response = await fetch('/api/execute/delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        selected_ids: Array.from(selectedIds)
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    let message = `✅ Deletion Complete!\n\n` +
+                          `Deleted: ${result.deleted}\n` +
+                          `Failed: ${result.failed}\n` +
+                          `Backup: ${result.backup_file}`;
+                    
+                    if (result.errors && result.errors.length > 0) {
+                        message += `\n\nErrors:\n${result.errors.join('\n')}`;
+                    }
+                    
+                    alert(message);
+                    
+                    // Reload reports
+                    loadReports();
+                    document.getElementById('report-detail').classList.add('hidden');
+                } else {
+                    alert('❌ Deletion failed: ' + result.message);
+                }
+                
+            } catch (error) {
+                alert('❌ Error during deletion: ' + error.message);
+            } finally {
+                document.getElementById('delete-progress').classList.add('hidden');
+                document.getElementById('delete-btn').disabled = false;
+            }
+        }
+
+        // Cleanup old reports
+        async function cleanupOldReports() {
+            const keepCount = prompt('How many reports to keep? (default: 5)', '5');
+            
+            if (keepCount === null) {
+                return; // Cancelled
+            }
+            
+            const keep = parseInt(keepCount) || 5;
+            
+            if (!confirm(`This will delete all but the ${keep} most recent reports. Continue?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/cleanup/reports', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({keep_count: keep})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const total = result.deleted.reports + result.deleted.html + result.deleted.csv + result.deleted.backups;
+                    alert(`✅ Cleanup complete!\n\nDeleted ${total} old files:\n` +
+                          `- ${result.deleted.reports} JSON reports\n` +
+                          `- ${result.deleted.html} HTML reports\n` +
+                          `- ${result.deleted.csv} CSV reports\n` +
+                          `- ${result.deleted.backups} old backups`);
+                    loadReports(); // Refresh list
+                } else {
+                    alert('❌ Cleanup failed: ' + result.message);
+                }
+            } catch (error) {
+                alert('❌ Error during cleanup: ' + error.message);
+            }
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+    </script>
+</body>
+</html>
