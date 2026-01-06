@@ -586,6 +586,61 @@
                         <label for="duplicates-enabled">Enable Duplicate Detection</label>
                     </div>
 
+                    <hr style="margin: 30px 0; border: none; border-top: 2px solid #e0e0e0;">
+
+                    <h3 style="margin-bottom: 15px;">📅 Scheduled Analysis</h3>
+                    
+                    <div class="alert alert-info" style="background: #e3f2fd; border-left: 4px solid #2196F3; padding: 12px; margin-bottom: 20px;">
+                        <strong>ℹ️ Automatic Analysis</strong><br>
+                        Schedule automatic analysis to run at specific times. Analysis only - deletion still requires manual approval.
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="schedule-enabled">
+                        <label for="schedule-enabled">Enable Scheduled Analysis</label>
+                    </div>
+
+                    <div id="schedule-settings" style="margin-left: 20px; display: none;">
+                        <div class="form-group">
+                            <label for="schedule-time">Time (24-hour format):</label>
+                            <input type="time" id="schedule-time" value="03:00" style="width: 150px;">
+                            <small style="display: block; color: #666; margin-top: 5px;">Time when analysis should run</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="schedule-frequency">Frequency:</label>
+                            <select id="schedule-frequency" style="width: 200px;" onchange="updateScheduleFields()">
+                                <option value="daily">Daily</option>
+                                <option value="weekly" selected>Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="schedule-day-of-week-group">
+                            <label for="schedule-day-of-week">Day of Week:</label>
+                            <select id="schedule-day-of-week" style="width: 200px;">
+                                <option value="mon" selected>Monday</option>
+                                <option value="tue">Tuesday</option>
+                                <option value="wed">Wednesday</option>
+                                <option value="thu">Thursday</option>
+                                <option value="fri">Friday</option>
+                                <option value="sat">Saturday</option>
+                                <option value="sun">Sunday</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="schedule-day-of-month-group" style="display: none;">
+                            <label for="schedule-day-of-month">Day of Month:</label>
+                            <input type="number" id="schedule-day-of-month" min="1" max="31" value="1" style="width: 100px;">
+                            <small style="display: block; color: #666; margin-top: 5px;">Day 1-31 (use 1-28 for all months)</small>
+                        </div>
+
+                        <div id="schedule-status" style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px; display: none;">
+                            <strong>📊 Schedule Status:</strong><br>
+                            <span id="schedule-status-text">Loading...</span>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn">💾 Save Configuration</button>
                 </form>
             </div>
@@ -792,6 +847,21 @@
                 document.getElementById('nl-audio-priority').checked = config.duplicates?.nl_audio_priority !== false;
                 document.getElementById('duplicates-enabled').checked = config.duplicates?.enabled !== false;
 
+                // Schedule
+                const schedule = config.schedule || {};
+                document.getElementById('schedule-enabled').checked = schedule.enabled || false;
+                document.getElementById('schedule-time').value = schedule.time || '03:00';
+                document.getElementById('schedule-frequency').value = schedule.days || 'weekly';
+                document.getElementById('schedule-day-of-week').value = schedule.day_of_week || 'mon';
+                document.getElementById('schedule-day-of-month').value = schedule.day_of_month || 1;
+                
+                // Update schedule UI visibility
+                updateScheduleVisibility();
+                updateScheduleFields();
+                
+                // Load schedule status
+                loadScheduleStatus();
+
             } catch (error) {
                 console.error('Failed to load config:', error);
             }
@@ -831,6 +901,13 @@
                 duplicates: {
                     enabled: document.getElementById('duplicates-enabled').checked,
                     nl_audio_priority: document.getElementById('nl-audio-priority').checked
+                },
+                schedule: {
+                    enabled: document.getElementById('schedule-enabled').checked,
+                    time: document.getElementById('schedule-time').value,
+                    days: document.getElementById('schedule-frequency').value,
+                    day_of_week: document.getElementById('schedule-day-of-week').value,
+                    day_of_month: parseInt(document.getElementById('schedule-day-of-month').value)
                 }
             };
 
@@ -842,7 +919,27 @@
                 });
 
                 if (response.ok) {
-                    alert('✅ Configuration saved successfully!');
+                    // Also update schedule via dedicated endpoint
+                    try {
+                        const scheduleResponse = await fetch('/api/schedule/update', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(config.schedule)
+                        });
+                        
+                        if (scheduleResponse.ok) {
+                            alert('✅ Configuration saved successfully!\n\n' + 
+                                  (config.schedule.enabled ? 
+                                   '📅 Scheduled analysis enabled' : 
+                                   '⏸️ Scheduled analysis disabled'));
+                            loadScheduleStatus(); // Refresh status
+                        } else {
+                            alert('✅ Configuration saved, but scheduler update failed.\nCheck logs for details.');
+                        }
+                    } catch (schedErr) {
+                        alert('✅ Configuration saved, but scheduler update failed.\n' + schedErr.message);
+                    }
+
                 } else {
                     alert('❌ Failed to save configuration');
                 }
@@ -1239,6 +1336,87 @@
                 alert('❌ Error during cleanup: ' + error.message);
             }
         }
+
+        // Schedule UI helpers
+        function updateScheduleVisibility() {
+            const enabled = document.getElementById('schedule-enabled').checked;
+            const settings = document.getElementById('schedule-settings');
+            const statusDiv = document.getElementById('schedule-status');
+            
+            if (enabled) {
+                settings.style.display = 'block';
+                statusDiv.style.display = 'block';
+            } else {
+                settings.style.display = 'none';
+                statusDiv.style.display = 'none';
+            }
+        }
+
+        function updateScheduleFields() {
+            const frequency = document.getElementById('schedule-frequency').value;
+            const dayOfWeekGroup = document.getElementById('schedule-day-of-week-group');
+            const dayOfMonthGroup = document.getElementById('schedule-day-of-month-group');
+            
+            if (frequency === 'daily') {
+                dayOfWeekGroup.style.display = 'none';
+                dayOfMonthGroup.style.display = 'none';
+            } else if (frequency === 'weekly') {
+                dayOfWeekGroup.style.display = 'block';
+                dayOfMonthGroup.style.display = 'none';
+            } else if (frequency === 'monthly') {
+                dayOfWeekGroup.style.display = 'none';
+                dayOfMonthGroup.style.display = 'block';
+            }
+        }
+
+        async function loadScheduleStatus() {
+            try {
+                const response = await fetch('/api/schedule/status');
+                const data = await response.json();
+                
+                const statusText = document.getElementById('schedule-status-text');
+                
+                if (!data.available) {
+                    statusText.innerHTML = '⚠️ Scheduler module not available';
+                    return;
+                }
+                
+                if (!data.enabled) {
+                    statusText.innerHTML = '⏸️ Scheduled analysis is disabled';
+                    return;
+                }
+                
+                const config = data.config || {};
+                let scheduleDesc = '';
+                
+                if (config.days === 'daily') {
+                    scheduleDesc = `Daily at ${config.time}`;
+                } else if (config.days === 'weekly') {
+                    const dayNames = {
+                        mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday',
+                        thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday'
+                    };
+                    scheduleDesc = `Weekly on ${dayNames[config.day_of_week]} at ${config.time}`;
+                } else if (config.days === 'monthly') {
+                    scheduleDesc = `Monthly on day ${config.day_of_month} at ${config.time}`;
+                }
+                
+                let html = `✅ Active: ${scheduleDesc}`;
+                
+                if (data.next_run) {
+                    const nextRun = new Date(data.next_run);
+                    html += `<br>⏰ Next run: ${nextRun.toLocaleString()}`;
+                }
+                
+                statusText.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Failed to load schedule status:', error);
+            }
+        }
+
+        // Event listener for schedule checkbox
+        document.getElementById('schedule-enabled').addEventListener('change', updateScheduleVisibility);
 
         // Load dashboard on page load
         loadDashboard();
