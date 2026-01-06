@@ -1,4 +1,4 @@
-# Plex Lifecycle Manager
+# Plex Lifecycle Manager by Claude
 
 <div align="center">
 
