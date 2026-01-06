@@ -143,6 +143,9 @@ See **[QUICKSTART.md](QUICKSTART.md#configuration)** for detailed configuration 
 ---
 
 ## 📊 Screenshots
+[!image](https://github.com/ademozdemir/plex-lifecycle-manager/blob/main/schreenshots/screenshot.png)
+
+[!image](https://github.com/ademozdemir/plex-lifecycle-manager/blob/main/schreenshots/screenshot1.png)
 
 ### Web Interface
 - Modern, responsive design
