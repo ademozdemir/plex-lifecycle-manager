@@ -2,9 +2,38 @@
 
 All notable changes to Plex Lifecycle Manager will be documented in this file.
 
-## [2.0.0] - 2026-01-06
+## [2.1.1] - 2026-01-06 - CRITICAL BUG FIX
 
-### Major Release - Execute Mode V2
+### Fixed
+- **CRITICAL:** Config save was overwriting entire config instead of merging
+  - Libraries section was deleted on every save
+  - Rules section was deleted on every save
+  - Caused "Error: 'libraries'" and "Error: 'rules'" during analysis
+- **CRITICAL:** Web UI cleanup→rules mapping
+  - Web form sends "cleanup" but config uses "rules"
+  - Now properly mapped during save
+  
+### Added
+- **Auto-detect libraries** from Plex after config save
+  - Automatically populates libraries section
+  - Detects library type (movie/show)
+  - Smart rule assignment based on library name
+- Deep merge for nested configuration sections
+- Fallback defaults for missing critical sections
+- Better error handling and logging in config save
+
+### Changed
+- save_config() now merges with existing config instead of overwriting
+- Config save preserves all sections not in web form
+- sort_keys=False in yaml.dump to maintain order
+
+**UPGRADE URGENCY:** HIGH - All users should update immediately
+
+---
+
+## [2.1.0] - 2026-01-06
+
+### Major Release - Execute Mode V2 + Scheduler GUI
 
 #### Added
 - **Execute Mode V2** - Complete deletion workflow

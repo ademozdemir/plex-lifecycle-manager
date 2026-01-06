@@ -1,4 +1,4 @@
-# Plex Lifecycle Manager by Claude
+# Plex Lifecycle Manager
 
 <div align="center">
 
@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.12-green.svg)]()
-[![Version](https://img.shields.io/badge/Version-2.0.0-orange.svg)]()
+[![Version](https://img.shields.io/badge/Version-2.1.1-orange.svg)]()
 
 [Quick Start](#-quick-start) • [Features](#-features) • [Documentation](#-documentation) • [Installation](#-installation) • [Screenshots](#-screenshots)
 

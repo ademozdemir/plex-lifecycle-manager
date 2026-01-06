@@ -1,0 +1,49 @@
+# Plex Lifecycle Manager - Schedule Configuration
+# ============================================================================
+# SEPARATE from main config! Schedule saves NEVER touch config.yaml!
+# ============================================================================
+
+# Enable or disable scheduled analysis
+enabled: false                       # Set to true to enable
+
+# Time to run analysis (24-hour format)
+time: "03:00"                        # HH:MM format (e.g., "03:00" = 3 AM)
+
+# Frequency: daily, weekly, or monthly
+days: "weekly"
+
+# For weekly schedule - day of week
+day_of_week: "mon"                   # mon, tue, wed, thu, fri, sat, sun
+
+# For monthly schedule - day of month
+day_of_month: 1                      # 1-31 (use 1-28 for all months)
+
+# ============================================================================
+# EXAMPLES:
+# ============================================================================
+
+# Daily at 3 AM:
+#   enabled: true
+#   time: "03:00"
+#   days: "daily"
+
+# Weekly on Monday at 3 AM:
+#   enabled: true
+#   time: "03:00"
+#   days: "weekly"
+#   day_of_week: "mon"
+
+# Monthly on 1st at 3 AM:
+#   enabled: true
+#   time: "03:00"
+#   days: "monthly"
+#   day_of_month: 1
+
+# ============================================================================
+# NOTES:
+# ============================================================================
+# - Schedule runs ANALYSIS only, deletion still requires manual approval
+# - Analysis will be skipped if one is already running
+# - Check logs with: docker logs plex-lifecycle | grep -i schedule
+# - View status via Web UI → Configuration → Schedule section
+# ============================================================================

@@ -1,6 +1,20 @@
 # Plex Lifecycle Manager - Example Configuration
 # Copy this file to config.yaml and fill in your details
 
+# ============================================================================
+# IMPORTANT SETUP NOTES:
+# ============================================================================
+# 1. LIBRARIES: Will be AUTO-DETECTED from Plex after first configuration save!
+#    The libraries section below is just an EXAMPLE. Your actual libraries will
+#    be different (different IDs, names, types). Don't worry - they'll be
+#    detected automatically when you save config in the Web UI.
+#
+# 2. NL AUDIO PRIORITY: Set to FALSE if you don't use Dutch audio!
+#    If enabled, tool will prefer Dutch audio over higher quality.
+#
+# 3. FIRST TIME: Configure Plex credentials → Save in Web UI → Done!
+# ============================================================================
+
 plex:
   url: "http://192.168.1.100:32400"  # Your Plex server URL
   token: "YOUR_PLEX_TOKEN_HERE"       # Get from Plex Web App (see README)
@@ -15,28 +29,29 @@ radarr:
   url: "http://192.168.1.100:7878"    # Your Radarr URL
   api_key: "YOUR_RADARR_API_KEY"      # Get from Radarr Settings → General → Security
 
-# Auto-detected libraries (don't edit unless you know what you're doing)
+# Libraries Configuration
+# =====================
+# IMPORTANT: These are auto-detected from your Plex server!
+# After saving configuration in Web UI, this section will be populated automatically.
+# 
+# You can also manually configure them if needed:
+# Format:
+#   - id: <plex_library_id>     # Find via Plex API
+#     name: "<library_name>"     # Your library name
+#     type: "movie" or "show"    # Media type
+#     rules: "<rule_set>"        # Which rules to apply (see rules section above)
+#
+# Example (remove these when adding your own):
 libraries:
   - id: 1
     name: "Movies"
     type: "movie"
     rules: "movies"
-  - id: 2
-    name: "KidsMovies"
-    type: "movie"
-    rules: "kids_movies"
   - id: 3
     name: "TV Shows"
     type: "show"
     rules: "tv_shows"
-  - id: 4
-    name: "KidsSeries"
-    type: "show"
-    rules: "kids_series"
-  - id: 5
-    name: "Anime"
-    type: "show"
-    rules: "anime"
+  # Add more libraries as needed
 
 # Cleanup rules (customize to your preferences)
 rules:
@@ -118,10 +133,12 @@ safety:
   min_free_space_gb: 100               # Minimum free space to maintain
   require_confirmation: true           # Require manual confirmation
 
-# Scheduled analysis (Optional)
-schedule:
-  enabled: false                       # Enable scheduled analysis
-  time: "03:00"                        # Time to run (HH:MM format, 24-hour)
-  days: "weekly"                       # Frequency: daily, weekly, monthly
-  day_of_week: "mon"                   # Day for weekly (mon, tue, wed, thu, fri, sat, sun)
-  day_of_month: 1                      # Day for monthly (1-31)
+# ============================================================================
+# SCHEDULED ANALYSIS
+# ============================================================================
+# Schedule is now in a SEPARATE file: schedule.yaml
+# This prevents schedule saves from touching your main config!
+# 
+# Configure schedule via Web UI → Configuration tab → Schedule section
+# Or create schedule.yaml manually (see schedule.example.yaml)
+# ============================================================================
